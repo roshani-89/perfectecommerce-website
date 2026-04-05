@@ -30,30 +30,12 @@
     overflow-x: hidden;
     cursor: none;
   }
-
-  /* ── CUSTOM CURSOR ── */
-  .cursor {
-    position: fixed; width: 8px; height: 8px;
-    background: var(--gold); border-radius: 50%;
-    pointer-events: none; z-index: 9999;
-    transform: translate(-50%,-50%);
-    transition: transform 0.1s, background 0.3s;
-  }
-  .cursor-ring {
-    position: fixed; width: 36px; height: 36px;
-    border: 1px solid rgba(201,169,110,0.5);
-    border-radius: 50%; pointer-events: none; z-index: 9998;
-    transform: translate(-50%,-50%);
-    transition: transform 0.25s ease, width 0.3s, height 0.3s, border-color 0.3s;
-  }
-  body:hover .cursor-ring { border-color: var(--gold); }
-
   /* ── SMOKE CANVAS ── */
   #smokeCanvas {
     position: fixed; top: 0; left: 0;
     width: 100%; height: 100%;
-    pointer-events: none; z-index: 0;
-    opacity: 0.55;
+    pointer-events: none; z-index: 10000;
+    opacity: 0.65;
   }
 
   /* ── NAV ── */
@@ -879,10 +861,6 @@
 <!-- SMOKE CANVAS -->
 <canvas id="smokeCanvas"></canvas>
 
-<!-- CURSOR -->
-<div class="cursor" id="cursor"></div>
-<div class="cursor-ring" id="cursorRing"></div>
-
 <!-- WISPS -->
 <div id="wisps"></div>
 
@@ -1104,7 +1082,6 @@
     <div class="scent-card reveal reveal-delay-1">
       <div class="scent-count">01</div>
       <div class="scent-visual-bg" style="background-image: url('assets/rose-noire.png');"></div>
-      <span class="scent-icon">🌹</span>
       <div class="scent-name">Floral Oriental</div>
       <div class="scent-desc">Intoxicating blooms layered over rich resins. Feminine, complex, deeply seductive.</div>
       <div class="scent-arrow">Explore ——</div>
@@ -1112,7 +1089,6 @@
     <div class="scent-card reveal reveal-delay-2">
       <div class="scent-count">02</div>
       <div class="scent-visual-bg" style="background-image: url('assets/nuit-noire.png'); opacity: 0.15"></div>
-      <span class="scent-icon">🪵</span>
       <div class="scent-name">Woody Smoke</div>
       <div class="scent-desc">Ancient forests and sacred resins. Oud, cedarwood, and vetiver speak in tongues of smoke.</div>
       <div class="scent-arrow">Explore ——</div>
@@ -1120,7 +1096,6 @@
     <div class="scent-card reveal reveal-delay-3">
       <div class="scent-count">03</div>
       <div class="scent-visual-bg" style="background-image: url('assets/ambre-dor.png');"></div>
-      <span class="scent-icon">✨</span>
       <div class="scent-name">Warm Amber</div>
       <div class="scent-desc">Golden warmth that lingers long after you leave the room. Amber, vanilla, benzoin.</div>
       <div class="scent-arrow">Explore ——</div>
@@ -1128,7 +1103,6 @@
     <div class="scent-card reveal">
       <div class="scent-count">04</div>
       <div class="scent-visual-bg" style="background: linear-gradient(135deg, #0a1020, #1a3a7a); opacity: 0.3;"></div>
-      <span class="scent-icon">🌙</span>
       <div class="scent-name">Dark Aquatic</div>
       <div class="scent-desc">The ocean at midnight. Salted air, driftwood, ambergris and moonlit musk.</div>
       <div class="scent-arrow">Explore ——</div>
@@ -1264,31 +1238,6 @@ window.addEventListener('load', () => {
   }, 2000);
 });
 
-// ── CURSOR ──
-const cursor = document.getElementById('cursor');
-const ring = document.getElementById('cursorRing');
-let mx = 0, my = 0, rx = 0, ry = 0;
-document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-function animCursor() {
-  cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
-  rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
-  ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
-  requestAnimationFrame(animCursor);
-}
-animCursor();
-document.querySelectorAll('a,button,.product-card,.scent-card').forEach(el => {
-  el.addEventListener('mouseenter', () => {
-    ring.style.width = '60px'; ring.style.height = '60px';
-    ring.style.borderColor = 'var(--gold)';
-    cursor.style.transform = 'translate(-50%,-50%) scale(2)';
-  });
-  el.addEventListener('mouseleave', () => {
-    ring.style.width = '36px'; ring.style.height = '36px';
-    ring.style.borderColor = 'rgba(201,169,110,0.5)';
-    cursor.style.transform = 'translate(-50%,-50%) scale(1)';
-  });
-});
-
 // ── SMOKE CANVAS ──
 const canvas = document.getElementById('smokeCanvas');
 const ctx = canvas.getContext('2d');
@@ -1336,18 +1285,89 @@ class SmokeParticle {
   }
 }
 
-const particles = Array.from({length: 35}, () => new SmokeParticle());
-// stagger their start positions
+class MouseSmokeParticle {
+  constructor(x, y, isClick = false) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * (isClick ? 4 : 1.2);
+    this.vy = (Math.random() - 0.5) * (isClick ? 4 : 1.2) - 0.5;
+    this.size = Math.random() * (isClick ? 30 : 15) + (isClick ? 20 : 10);
+    this.alpha = isClick ? 0.8 : 0.6;
+    this.life = 0;
+    this.maxLife = Math.random() * 80 + 60;
+    // Brighter, more visible smoke (Silvery/White)
+    this.hue = 200; // Hint of blue
+    this.sat = 5;
+    this.light = 85; 
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life++;
+    this.size += 0.8;
+    this.alpha *= 0.96;
+  }
+  draw() {
+    if (this.alpha <= 0.01) return;
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+    grad.addColorStop(0, `hsla(${this.hue}, ${this.sat}%, ${this.light}%, ${this.alpha})`);
+    grad.addColorStop(0.4, `hsla(${this.hue}, ${this.sat}%, ${this.light}%, ${this.alpha * 0.4})`);
+    grad.addColorStop(1, `hsla(${this.hue}, ${this.sat}%, ${this.light}%, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+const particles = Array.from({length: 40}, () => new SmokeParticle());
+const mouseParticles = [];
+
 particles.forEach((p, i) => {
   p.life = Math.floor(Math.random() * p.maxLife);
   p.y = canvas.height - (p.life * Math.abs(p.vy));
 });
 
+function handleInteraction(e) {
+  const x = e.clientX || (e.touches && e.touches[0].clientX);
+  const y = e.clientY || (e.touches && e.touches[0].clientY);
+  if (!x || !y) return;
+  
+  for(let i=0; i<4; i++) {
+    mouseParticles.push(new MouseSmokeParticle(x, y));
+  }
+}
+
+document.addEventListener('mousemove', handleInteraction);
+document.addEventListener('touchmove', handleInteraction);
+document.addEventListener('mousedown', e => {
+  for(let i=0; i<15; i++) {
+    mouseParticles.push(new MouseSmokeParticle(e.clientX, e.clientY, true));
+  }
+});
+
 function animSmoke() {
+  if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Background particles
   particles.forEach(p => { p.update(); p.draw(); });
+  
+  // Mouse particles
+  for(let i = mouseParticles.length - 1; i >= 0; i--) {
+    const p = mouseParticles[i];
+    p.update();
+    p.draw();
+    if(p.alpha <= 0.01 || p.life > p.maxLife) {
+      mouseParticles.splice(i, 1);
+    }
+  }
+  
+  if(mouseParticles.length > 300) mouseParticles.splice(0, 5);
+  
   requestAnimationFrame(animSmoke);
 }
+console.log('Obscura Smoke System Active');
 animSmoke();
 
 // ── WISP PARTICLES ──
